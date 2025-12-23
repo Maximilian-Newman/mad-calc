@@ -596,19 +596,13 @@ def update_thrusts_from_powerVal(model, powerVal, pitchVal, rollVal):
             out = False
     return out
 
-def update_thrusts_from_totThrust(model, totThrust, pitchVal, rollVal, verbose = False):
+def update_thrusts_from_totThrust(model, totThrust, pitchVal, rollVal, thrustIsRaw = False):
+    if thrustIsRaw:
+        return update_thrusts_from_powerVal(model, totThrust, pitchVal, rollVal)
+    
     motors = get_motor_list(model)
     maxPow = 1
     minPow = 0
-    #update_thrusts_from_powerVal(model, maxPow, pitchVal, rollVal)
-    #maxThrust = get_total_thrust(model)
-    #update_thrusts_from_powerVal(model, minPow, pitchVal, rollVal)
-    #minThrust = get_total_thrust(model)
-    #if minThrust > totThrust or maxThrust < totThrust:
-    #    if verbose:
-    #        print(minThrust, totThrust, maxThrust)
-    #    return False # impossible
-
     out = False
     while maxPow - minPow >= 0.0000001:
         testPow = (minPow + maxPow) / 2
@@ -625,7 +619,7 @@ def update_thrusts_from_totThrust(model, totThrust, pitchVal, rollVal, verbose =
 
 INITIAL_EXPANSION_RESOLUTION = 0.1
 
-def expand_pitch(model, totThrust, dPitchM, rollVals):
+def expand_pitch(model, totThrust, dPitchM, rollVals, thrustIsRaw = False):
     pitchVals = [0, 0]
     
     for ri in [0,1]:
@@ -633,50 +627,50 @@ def expand_pitch(model, totThrust, dPitchM, rollVals):
         while get_total_motor_moment(model)[0] > dPitchM:
             #print(get_total_motor_moment(model)[0])
             pitchVals[0] -= INITIAL_EXPANSION_RESOLUTION
-            if update_thrusts_from_totThrust(model, totThrust, pitchVals[0], rollVals[ri]) == False:
+            if update_thrusts_from_totThrust(model, totThrust, pitchVals[0], rollVals[ri], thrustIsRaw) == False:
                 return [None, None]
             if pitchVals[0] < -1: return [None, None]
             
         update_thrusts_from_totThrust(model, totThrust, pitchVals[1], rollVals[ri])
         while get_total_motor_moment(model)[0] < dPitchM:
             pitchVals[1] += INITIAL_EXPANSION_RESOLUTION
-            if update_thrusts_from_totThrust(model, totThrust, pitchVals[1], rollVals[ri]) == False:
+            if update_thrusts_from_totThrust(model, totThrust, pitchVals[1], rollVals[ri], thrustIsRaw) == False:
                 return [None, None]
             if pitchVals[1] > 1: return [None, None]
     
     return pitchVals
 
-def expand_roll(model, totThrust, dRollM, pitchVals):
+def expand_roll(model, totThrust, dRollM, pitchVals, thrustIsRaw = False):
     rollVals = [0, 0]
     
     for pi in [0,1]:
         update_thrusts_from_totThrust(model, totThrust, pitchVals[pi], rollVals[0])
         while get_total_motor_moment(model)[1] > dRollM:
             rollVals[0] -= INITIAL_EXPANSION_RESOLUTION
-            if update_thrusts_from_totThrust(model, totThrust, pitchVals[pi], rollVals[0]) == False:
+            if update_thrusts_from_totThrust(model, totThrust, pitchVals[pi], rollVals[0], thrustIsRaw) == False:
                 return [None, None]
             if rollVals[0] < -1: return [None, None]
             
         update_thrusts_from_totThrust(model, totThrust, pitchVals[pi], rollVals[1])
         while get_total_motor_moment(model)[1] < dRollM:
             rollVals[1] += INITIAL_EXPANSION_RESOLUTION
-            if update_thrusts_from_totThrust(model, totThrust, pitchVals[pi], rollVals[1]) == False:
+            if update_thrusts_from_totThrust(model, totThrust, pitchVals[pi], rollVals[1], thrustIsRaw) == False:
                 return [None, None]
             if rollVals[1] > 1: return [None, None]
     
     return rollVals
         
 
-def update_thrusts_from_moment(model, totThrust, dPitchM, dRollM):
+def update_thrusts_from_moment(model, totThrust, dPitchM, dRollM, thrustIsRaw = False):
     minPitchVal = 0
     maxPitchVal = 0
     minRollVal = 0
     maxRollVal = 0
 
     for mult in [0, 0.1, 0.4, 0.8, 1, 1]:
-        minPitchVal, maxPitchVal = expand_pitch(model, totThrust, dPitchM * mult, [minRollVal, maxRollVal])
+        minPitchVal, maxPitchVal = expand_pitch(model, totThrust, dPitchM * mult, [minRollVal, maxRollVal], thrustIsRaw)
         if minPitchVal == None: return False
-        minRollVal, maxRollVal = expand_roll(model, totThrust, dRollM * mult, [minPitchVal, maxPitchVal])
+        minRollVal, maxRollVal = expand_roll(model, totThrust, dRollM * mult, [minPitchVal, maxPitchVal], thrustIsRaw)
         if minRollVal == None: return False
 
     limit = 0.0000001
@@ -690,13 +684,13 @@ def update_thrusts_from_moment(model, totThrust, dPitchM, dRollM):
             testMaxMom = [None, None]
             testMinMom = [None, None]
             modified = False
-            update_thrusts_from_totThrust(model, totThrust, testMin, minRollVal)
+            update_thrusts_from_totThrust(model, totThrust, testMin, minRollVal, thrustIsRaw)
             testMinMom[0] = get_total_motor_moment(model)[0]
-            update_thrusts_from_totThrust(model, totThrust, testMin, maxRollVal)
+            update_thrusts_from_totThrust(model, totThrust, testMin, maxRollVal, thrustIsRaw)
             testMinMom[1] = get_total_motor_moment(model)[0]
-            update_thrusts_from_totThrust(model, totThrust, testMax, minRollVal)
+            update_thrusts_from_totThrust(model, totThrust, testMax, minRollVal, thrustIsRaw)
             testMaxMom[0] = get_total_motor_moment(model)[0]
-            update_thrusts_from_totThrust(model, totThrust, testMax, maxRollVal)
+            update_thrusts_from_totThrust(model, totThrust, testMax, maxRollVal, thrustIsRaw)
             testMaxMom[1] = get_total_motor_moment(model)[0]
 
             if testMaxMom[0] >= dPitchM and testMaxMom[1] >= dPitchM:
@@ -710,19 +704,19 @@ def update_thrusts_from_moment(model, totThrust, dPitchM, dRollM):
                 return False
         else:
             # collapse roll
-            delta = (maxRollVal - minRollVal) / 30
+            delta = (maxRollVal - minRollVal) / 10
             testMax = maxRollVal - delta
             testMin = minRollVal + delta
             testMaxMom = [None, None]
             testMinMom = [None, None]
             modified = False
-            update_thrusts_from_totThrust(model, totThrust, minPitchVal, testMin)
+            update_thrusts_from_totThrust(model, totThrust, minPitchVal, testMin, thrustIsRaw)
             testMinMom[0] = get_total_motor_moment(model)[1]
-            update_thrusts_from_totThrust(model, totThrust, maxPitchVal, testMin)
+            update_thrusts_from_totThrust(model, totThrust, maxPitchVal, testMin, thrustIsRaw)
             testMinMom[1] = get_total_motor_moment(model)[1]
-            update_thrusts_from_totThrust(model, totThrust, minPitchVal, testMax)
+            update_thrusts_from_totThrust(model, totThrust, minPitchVal, testMax, thrustIsRaw)
             testMaxMom[0] = get_total_motor_moment(model)[1]
-            update_thrusts_from_totThrust(model, totThrust, maxPitchVal, testMax)
+            update_thrusts_from_totThrust(model, totThrust, maxPitchVal, testMax, thrustIsRaw)
             testMaxMom[1] = get_total_motor_moment(model)[1]
 
             if testMaxMom[0] >= dRollM and testMaxMom[1] >= dRollM:
@@ -746,213 +740,117 @@ def print_motor_thrusts(model):
     print("Total moments:", get_total_motor_moment(model), "Nm")
     print("---------------------")
 
-"""
-def get_min_max_hover_pitch_moments_oppositeVal(model, totThrust, rollVal = 0):
-    limit = 0.000001
-    #initialIncrement = 0.1
-    
-    #a = -1
-    #while a < update_thrusts_from_totThrust(model, totThrust, a, rollVal) == False:
-    #    a += initialIncrement
-    a = 0
-    b = 1
-    while b - a > limit:
-        pitchVal = (a + b) / 2
-        if update_thrusts_from_totThrust(model, totThrust, pitchVal, rollVal) == True:
-            a = pitchVal
-        else:
-            b = pitchVal
-    if update_thrusts_from_totThrust(model, totThrust, a, rollVal) == False:
-        #print("1", a)
-        return [0, 0]
-        #pass
-    maxPitch = get_total_motor_moment(model)[0]
-    
-    #a = 1
-    #while a < update_thrusts_from_totThrust(model, totThrust, a, rollVal) == False:
-    #    a -= initialIncrement
-    a = 0
-    b = -1
-    while a - b > limit:
-        pitchVal = (a + b) / 2
-        if update_thrusts_from_totThrust(model, totThrust, pitchVal, rollVal) == True:
-            a = pitchVal
-        else:
-            b = pitchVal
-    if update_thrusts_from_totThrust(model, totThrust, a, rollVal) == False:
-        #print("2")
-        return[0, 0]
-        #pass
-    minPitch = get_total_motor_moment(model)[0]
 
-    return [minPitch, maxPitch]
-"""
-
-def get_min_max_hover_pitch_moments_oppositeVal(model, totThrust, rollVal = 0):
-    limit = 0.000001
-    a = 0
-    b = 1
-    while b - a > limit:
-        pitchVal = (a + b) / 2
-        if update_thrusts_from_totThrust(model, totThrust, pitchVal, rollVal) == True:
-            a = pitchVal
-        else:
-            b = pitchVal
-    update_thrusts_from_totThrust(model, totThrust, a, rollVal)
-    maxPitch = get_total_motor_moment(model)[0]
-    
-    a = 0
-    b = -1
-    while a - b > limit:
-        pitchVal = (a + b) / 2
-        if update_thrusts_from_totThrust(model, totThrust, pitchVal, rollVal) == True:
-            a = pitchVal
-        else:
-            b = pitchVal
-    update_thrusts_from_totThrust(model, totThrust, a, rollVal)
-    minPitch = get_total_motor_moment(model)[0]
-
-    return [minPitch, maxPitch]
-
-def get_min_max_hover_roll_moments_oppositeVal(model, totThrust, pitchVal = 0):
-    limit = 0.000001
-    a = 0
-    b = 1
-    while b - a > limit:
-        rollVal = (a + b) / 2
-        if update_thrusts_from_totThrust(model, totThrust, pitchVal, rollVal) == True:
-            a = rollVal
-        else:
-            b = rollVal
-    update_thrusts_from_totThrust(model, totThrust, pitchVal, a)
-    maxRoll = get_total_motor_moment(model)[1]
-    
-    a = 0
-    b = -1
-    while a - b > limit:
-        rollVal = (a + b) / 2
-        if update_thrusts_from_totThrust(model, totThrust, pitchVal, rollVal) == True:
-            a = rollVal
-        else:
-            b = rollVal
-    update_thrusts_from_totThrust(model, totThrust, pitchVal, a)
-    minRoll = get_total_motor_moment(model)[1]
-
-    return [minRoll, maxRoll]
-
-
-# Extremely slow, colpletely unusable:
-def get_min_max_hover_pitch_moments_oppositeM(model, totThrust, rollM = 0):
-    highest = 0
-    for motor in get_motor_list(model):
-        highest += abs(motor.maxThrust * motor.abs_thrustCenter()[0] / 1000)
-    
-    limit = 0.000001 * highest
-    a = 0
-    b = highest
-    while b - a > limit:
-        pitchVal = (a + b) / 2
-        if update_thrusts_from_moment(model, totThrust, pitchVal, rollM) == True:
-            a = pitchVal
-        else:
-            b = pitchVal
-    update_thrusts_from_moment(model, totThrust, a, rollM)
-    maxPitch = get_total_motor_moment(model)[0]
-    
-    a = 0
-    b = -highest
-    while a - b > limit:
-        pitchVal = (a + b) / 2
-        if update_thrusts_from_moment(model, totThrust, pitchVal, rollM) == True:
-            a = pitchVal
-        else:
-            b = pitchVal
-    update_thrusts_from_moment(model, totThrust, a, rollM)
-    minPitch = get_total_motor_moment(model)[0]
-
-    return [minPitch, maxPitch]
-
-# Extremely slow, colpletely unusable:
-def get_min_max_hover_roll_moments_oppositeM(model, totThrust, pitchM = 0):
-    highest = 0
-    for motor in get_motor_list(model):
-        highest += abs(motor.maxThrust * motor.abs_thrustCenter()[1] / 1000)
-    
-    limit = 0.000001 * highest
-    a = 0
-    b = highest
-    while b - a > limit:
-        rollVal = (a + b) / 2
-        if update_thrusts_from_moment(model, totThrust, pitchM, rollVal) == True:
-            a = rollVal
-        else:
-            b = rollVal
-    update_thrusts_from_moment(model, totThrust, pitchM, a)
-    maxRoll = get_total_motor_moment(model)[1]
-    
-    a = 0
-    b = -highest
-    while a - b > limit:
-        rollVal = (a + b) / 2
-        if update_thrusts_from_moment(model, totThrust, pitchM, rollVal) == True:
-            a = rollVal
-        else:
-            b = rollVal
-    update_thrusts_from_moment(model, totThrust, pitchM, a)
-    minRoll = get_total_motor_moment(model)[1]
-
-    return [minRoll, maxRoll]
-
-def get_min_max_hover_pitch_moments(model, thrust, oppositeVal = 0, oppositeIsMoment = False):
+def get_min_max_hover_moments_pitch(model, rollVal, oppositeIsMoment):
     if oppositeIsMoment:
-        oppositeVal = update_thrusts_from_moment(model, thrust, 0, oppositeVal)
-        if oppositeVal == False:
-            return [0, 0]
-        oppositeVal = oppositeVal[1]
-    return get_min_max_hover_pitch_moments_oppositeVal(model, thrust, oppositeVal)
+        rollMom = rollVal
+        rollVal = 0
 
-def get_min_max_hover_roll_moments(model, thrust, oppositeVal = 0, oppositeIsMoment = False):
+    precision = 200
+    thrusts = [[], []]
+    pitches = [[], []]
+    rolls = [[], []]
+
+    for thrustVal in range(0, precision):
+        thrustVal = thrustVal / precision
+
+        if oppositeIsMoment:
+            rollVal = update_thrusts_from_moment(model, thrustVal, 0, rollMom, True)
+            if rollVal == False: continue
+            rollVal = rollVal[1]
+        
+        lastWorked = False
+        lastThrust = 0
+        lastPitch = 0
+        for pitchVal in range(-precision, precision):
+            pitchVal = pitchVal / precision
+            thisWorks = update_thrusts_from_powerVal(model, thrustVal, pitchVal, rollVal)
+
+            if lastWorked and not thisWorks:
+                thrusts[1].append(get_total_thrust(model))
+                m = get_total_motor_moment(model)
+                pitches[1].append(m[0])
+                rolls[1].append(m[1])
+            elif thisWorks and not lastWorked:
+                thrusts[0].append(get_total_thrust(model))
+                m = get_total_motor_moment(model)
+                pitches[0].append(m[0])
+                rolls[0].append(m[1])
+            if thisWorks:
+                lastThrust = thrustVal
+                lastPitch = pitchVal
+            lastWorked = thisWorks
+
+    #print("pitch")
+    #print(thrusts, pitches, rolls)
+    return [thrusts, pitches, rolls]
+
+
+def get_min_max_hover_moments_roll(model, pitchVal, oppositeIsMoment):
     if oppositeIsMoment:
-        oppositeVal = update_thrusts_from_moment(model, thrust, oppositeVal, 0)
-        if oppositeVal == False:
-            return [0, 0]
-        oppositeVal = oppositeVal[0]
-    return get_min_max_hover_roll_moments_oppositeVal(model, thrust, oppositeVal)
+        pitchMom = pitchVal
+        pitchVal = 0
     
+    precision = 200
+    thrusts = [[], []]
+    pitches = [[], []]
+    rolls = [[], []]
 
-def graph_hover_moments(model, oppositeVal = 0, oppositeIsMoment = False):
-    expectedStop = 0
-    for motor in get_motor_list(model):
-        expectedStop += motor.maxThrust
-    thrustInterval = expectedStop / 200
+    for thrustVal in range(0, precision):
+        thrustVal = thrustVal / precision
+
+        if oppositeIsMoment:
+            pitchVal = update_thrusts_from_moment(model, thrustVal, 0, pitchMom, True)
+            if pitchVal == False: continue
+            pitchVal = pitchVal[0]
+        
+        lastWorked = False
+        lastThrust = 0
+        lastRoll = 0
+        for rollVal in range(-precision, precision):
+            rollVal = rollVal / precision
+            thisWorks = update_thrusts_from_powerVal(model, thrustVal, pitchVal, rollVal)
+
+            if lastWorked and not thisWorks:
+                update_thrusts_from_powerVal(model, lastThrust, pitchVal, lastRoll)
+                thrusts[1].append(get_total_thrust(model))
+                m = get_total_motor_moment(model)
+                pitches[1].append(m[0])
+                rolls[1].append(m[1])
+                #print(pitchVal, m[0])
+            elif thisWorks and not lastWorked:
+                thrusts[0].append(get_total_thrust(model))
+                m = get_total_motor_moment(model)
+                pitches[0].append(m[0])
+                rolls[0].append(m[1])
+            if thisWorks:
+                lastThrust = thrustVal
+                lastRoll = rollVal
+            lastWorked = thisWorks
+
+    #print("roll")
+    #print(thrusts, pitches, rolls)
+    return [thrusts, pitches, rolls]
+            
+def hover_moment_subgraph(thrusts, mainAxis, checkAxis, label, doCheck = True):
+    thrusts = thrusts[0] + thrusts[1][::-1]
+    mainAxis = mainAxis[0] + mainAxis[1][::-1]
+    checkAxis = checkAxis[0] + checkAxis[1][::-1]
     
-    thrustsP = []
-    minPitch = []
-    maxPitch = []
-    thrustsR = []
-    minRoll = []
-    maxRoll = []
+    if len(checkAxis) > 1 and doCheck:
+        mean = 0
+        for val in checkAxis:
+            mean += val
+        mean = mean / len(checkAxis)
+        for val in checkAxis:
+            if abs(val - mean) > 0.1 * mean and abs(val - mean) > 0.001:
+                print(mean, val)
+                label += " (INVALID)"
+                break
+    
+    plt.fill(thrusts, mainAxis, alpha=0.5, label = label)
 
-    thrust = 0
-    minM = 0
-    maxM = 0
-    while thrust < 0.9*expectedStop or maxM > minM:
-        thrustsP.append(thrust)
-        minPitch.append(minM)
-        maxPitch.append(maxM)
-        minM, maxM = get_min_max_hover_pitch_moments(model, thrust, oppositeVal, oppositeIsMoment)
-        thrust += thrustInterval
-
-    thrust = 0
-    minM = 0
-    maxM = 0
-    while thrust < 0.9*expectedStop or maxM > minM:
-        thrustsR.append(thrust)
-        minRoll.append(minM)
-        maxRoll.append(maxM)
-        minM, maxM = get_min_max_hover_roll_moments(model, thrust, oppositeVal, oppositeIsMoment)
-        thrust += thrustInterval
-
+def graph_hover_moments(model, oppositeVal, oppositeIsMoment):
     plt.figure()
     if oppositeIsMoment:
         plt.title(modelName + " - opposite moment = " + str(oppositeVal))
@@ -960,76 +858,56 @@ def graph_hover_moments(model, oppositeVal = 0, oppositeIsMoment = False):
         plt.title(modelName + " - opposite control = " + str(oppositeVal))
     plt.xlabel("Thrust - $N$")
     plt.ylabel("Hover Moment - $Nm$")
-    plt.fill_between(thrustsP, minPitch, maxPitch, alpha=0.5, label = "Pitch")
-    plt.fill_between(thrustsR, minRoll, maxRoll, alpha=0.5, label = "Roll")
     plt.axvline(get_mass(model) * 9.81 / 1000, color = "black")
     plt.axhline(0, color = "black")
+    
+    thrusts, pitches, rolls = get_min_max_hover_moments_pitch(model, oppositeVal, oppositeIsMoment)
+    hover_moment_subgraph(thrusts, pitches, rolls, "Pitch", oppositeIsMoment)
+     
+    thrusts, pitches, rolls = get_min_max_hover_moments_roll(model, oppositeVal, oppositeIsMoment)
+    hover_moment_subgraph(thrusts, rolls, pitches, "Roll", oppositeIsMoment)
+    thrusts = thrusts[0] + thrusts[1][::-1]
+    rolls = rolls[0] + rolls[1][::-1]
+
+    
     plt.legend()
     plt.show(block = False)
+        
 
 def graph_hover_moments_3D(model):
-    resolution = 70
-    
-    expectedStop = 0
-    for motor in get_motor_list(model):
-        expectedStop += motor.maxThrust
-    thrustInterval = expectedStop / resolution
-    
+    precision = 70
     x = []
     y = []
     z = []
     colors = []
-
-    for rollVal in range(-resolution, resolution):
-        rollVal = rollVal / resolution
-        thrust = 0
-        minM = 0
-        maxM = 0
-        while thrust < 0.9*expectedStop or maxM > minM:
-            minM, maxM = get_min_max_hover_pitch_moments_oppositeVal(model, thrust, rollVal)
-
-            if minM != maxM:
-                rollM = get_total_motor_moment(model)[1]
-                x.extend([thrust, thrust])
-                y.extend([minM, maxM])
-                z.extend([rollM, rollM])
-                colors.extend(["green", "blue"])
-            
-                #x.append(thrust)
-                #y.append(minM)
-                #z.append(rollM)
-                #colors.append("green")
-            thrust += thrustInterval
-            #print(thrust, minM, rollM)
-            #print(thrust, maxM, rollM)
-
-    for pitchVal in range(-resolution, resolution):
-        pitchVal = pitchVal / resolution
-        thrust = 0
-        minM = 0
-        maxM = 0
-        while thrust < 0.9*expectedStop or maxM > minM:
-            minM, maxM = get_min_max_hover_roll_moments_oppositeVal(model, thrust, pitchVal)
-
-            if minM != maxM:
-                pitchM = get_total_motor_moment(model)[0]
-                x.extend([thrust, thrust])
-                z.extend([minM, maxM])
-                y.extend([pitchM, pitchM])
-                colors.extend(["orange", "red"])
-            
-            thrust += thrustInterval
+    
+    for rollVal in range(-precision, precision):
+        rollVal = rollVal / precision
+        thrusts, pitches, rolls = get_min_max_hover_moments_pitch(model, rollVal, False)
+        for i in range(0, len(thrusts[0])):
+            x.extend([thrusts[0][i], thrusts[1][i]])
+            y.extend([pitches[0][i], pitches[1][i]])
+            z.extend([rolls[0][i], rolls[1][i]])
+            colors.extend(["blue", "lime"])
+    
+    for pitchVal in range(-precision, precision):
+        pitchVal = pitchVal / precision
+        thrusts, pitches, rolls = get_min_max_hover_moments_roll(model, pitchVal, False)
+        for i in range(0, len(thrusts[0])):
+            x.extend([thrusts[0][i], thrusts[1][i]])
+            y.extend([pitches[0][i], pitches[1][i]])
+            z.extend([rolls[0][i], rolls[1][i]])
+            colors.extend(["red", "orange"])
+    
 
     fig = plt.figure()
     ax = fig.add_subplot(projection = "3d")
     ax.set_xlabel("Thrust - $N$")
     ax.set_ylabel("Pitch Moment - $Nm$")
     ax.set_zlabel("Roll Moment - $Nm$")
-    #ax.set_aspect("equal")
-    #ax.plot_surface(np.array(x), np.array(y), np.array(z))
-    ax.scatter(x, y, z, marker = ".", alpha=0.9, c=colors)
+    ax.scatter(x, y, z, marker = ".", alpha=1, c=colors)
     plt.show(block = False)
-            
+
     
 
 def load_new_model():
@@ -1074,6 +952,8 @@ def follow_preset_options(model, options):
                 graph_model_drag(model, vMax, tailIncidence)
             elif line[1] == "AoA":
                 graph_AoA(model, vMax, tailIncidence)
+            elif line[1] == "hover_moments3d":
+                graph_hover_moments_3D(model)
             elif line[1].find("hover_moments") == 0:
                 options = line[1].split(",")
                 isM = False
