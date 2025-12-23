@@ -6,12 +6,11 @@ from matplotlib import pyplot as plt
 import numpy as np
 
 
-SCALE = 1
 CL_SAFETY_FACTOR = 1.5
+
+
+SCALE = 1
 modelName = ""
-
-
-
 contraintsModified = False
 
 turtle.hideturtle()
@@ -625,7 +624,6 @@ def expand_pitch(model, totThrust, dPitchM, rollVals, thrustIsRaw = False):
     for ri in [0,1]:
         update_thrusts_from_totThrust(model, totThrust, pitchVals[0], rollVals[ri])
         while get_total_motor_moment(model)[0] > dPitchM:
-            #print(get_total_motor_moment(model)[0])
             pitchVals[0] -= INITIAL_EXPANSION_RESOLUTION
             if update_thrusts_from_totThrust(model, totThrust, pitchVals[0], rollVals[ri], thrustIsRaw) == False:
                 return [None, None]
@@ -676,58 +674,55 @@ def update_thrusts_from_moment(model, totThrust, dPitchM, dRollM, thrustIsRaw = 
     limit = 0.0000001
 
     while maxPitchVal - minPitchVal > limit or maxRollVal - minRollVal > limit:
-        if maxPitchVal - minPitchVal > maxRollVal - minRollVal:
-            # collapse pitch
-            delta = (maxPitchVal - minPitchVal) / 10
-            testMax = maxPitchVal - delta
-            testMin = minPitchVal + delta
-            testMaxMom = [None, None]
-            testMinMom = [None, None]
-            modified = False
-            update_thrusts_from_totThrust(model, totThrust, testMin, minRollVal, thrustIsRaw)
-            testMinMom[0] = get_total_motor_moment(model)[0]
-            update_thrusts_from_totThrust(model, totThrust, testMin, maxRollVal, thrustIsRaw)
-            testMinMom[1] = get_total_motor_moment(model)[0]
-            update_thrusts_from_totThrust(model, totThrust, testMax, minRollVal, thrustIsRaw)
-            testMaxMom[0] = get_total_motor_moment(model)[0]
-            update_thrusts_from_totThrust(model, totThrust, testMax, maxRollVal, thrustIsRaw)
-            testMaxMom[1] = get_total_motor_moment(model)[0]
+        # collapse pitch
+        delta = (maxPitchVal - minPitchVal) / 10
+        testMax = maxPitchVal - delta
+        testMin = minPitchVal + delta
+        testMaxMom = [None, None]
+        testMinMom = [None, None]
+        modified = False
+        update_thrusts_from_totThrust(model, totThrust, testMin, minRollVal, thrustIsRaw)
+        testMinMom[0] = get_total_motor_moment(model)[0]
+        update_thrusts_from_totThrust(model, totThrust, testMin, maxRollVal, thrustIsRaw)
+        testMinMom[1] = get_total_motor_moment(model)[0]
+        update_thrusts_from_totThrust(model, totThrust, testMax, minRollVal, thrustIsRaw)
+        testMaxMom[0] = get_total_motor_moment(model)[0]
+        update_thrusts_from_totThrust(model, totThrust, testMax, maxRollVal, thrustIsRaw)
+        testMaxMom[1] = get_total_motor_moment(model)[0]
 
-            if testMaxMom[0] >= dPitchM and testMaxMom[1] >= dPitchM:
-                maxPitchVal = testMax
-                modified = True
-            if testMinMom[0] <= dPitchM and testMinMom[1] <= dPitchM:
-                minPitchVal = testMin
-                modified = True
-            if modified == False:
-                print("Failed to Converge (pitch)")
-                return False
-        else:
-            # collapse roll
-            delta = (maxRollVal - minRollVal) / 10
-            testMax = maxRollVal - delta
-            testMin = minRollVal + delta
-            testMaxMom = [None, None]
-            testMinMom = [None, None]
-            modified = False
-            update_thrusts_from_totThrust(model, totThrust, minPitchVal, testMin, thrustIsRaw)
-            testMinMom[0] = get_total_motor_moment(model)[1]
-            update_thrusts_from_totThrust(model, totThrust, maxPitchVal, testMin, thrustIsRaw)
-            testMinMom[1] = get_total_motor_moment(model)[1]
-            update_thrusts_from_totThrust(model, totThrust, minPitchVal, testMax, thrustIsRaw)
-            testMaxMom[0] = get_total_motor_moment(model)[1]
-            update_thrusts_from_totThrust(model, totThrust, maxPitchVal, testMax, thrustIsRaw)
-            testMaxMom[1] = get_total_motor_moment(model)[1]
+        if testMaxMom[0] >= dPitchM and testMaxMom[1] >= dPitchM:
+            maxPitchVal = testMax
+            modified = True
+        if testMinMom[0] <= dPitchM and testMinMom[1] <= dPitchM:
+            minPitchVal = testMin
+            modified = True
 
-            if testMaxMom[0] >= dRollM and testMaxMom[1] >= dRollM:
-                maxRollVal = testMax
-                modified = True
-            if testMinMom[0] <= dRollM and testMinMom[1] <= dRollM:
-                minRollVal = testMin
-                modified = True
-            if modified == False:
-                print("Failed to Converge (roll)")
-                return False
+        
+        # collapse roll
+        delta = (maxRollVal - minRollVal) / 10
+        testMax = maxRollVal - delta
+        testMin = minRollVal + delta
+        testMaxMom = [None, None]
+        testMinMom = [None, None]
+        update_thrusts_from_totThrust(model, totThrust, minPitchVal, testMin, thrustIsRaw)
+        testMinMom[0] = get_total_motor_moment(model)[1]
+        update_thrusts_from_totThrust(model, totThrust, maxPitchVal, testMin, thrustIsRaw)
+        testMinMom[1] = get_total_motor_moment(model)[1]
+        update_thrusts_from_totThrust(model, totThrust, minPitchVal, testMax, thrustIsRaw)
+        testMaxMom[0] = get_total_motor_moment(model)[1]
+        update_thrusts_from_totThrust(model, totThrust, maxPitchVal, testMax, thrustIsRaw)
+        testMaxMom[1] = get_total_motor_moment(model)[1]
+
+        if testMaxMom[0] >= dRollM and testMaxMom[1] >= dRollM:
+            maxRollVal = testMax
+            modified = True
+        if testMinMom[0] <= dRollM and testMinMom[1] <= dRollM:
+            minRollVal = testMin
+            modified = True
+        
+        if modified == False:
+            print("Failed to Converge")
+            return False
     return [(minPitchVal + maxPitchVal) / 2, (minRollVal + maxRollVal) / 2]
 
 def print_motor_thrusts(model):
@@ -741,7 +736,10 @@ def print_motor_thrusts(model):
     print("---------------------")
 
 
+MICROADJUST = 0.0002
+
 def get_min_max_hover_moments_pitch(model, rollVal, oppositeIsMoment):
+    rollMom = 0
     if oppositeIsMoment:
         rollMom = rollVal
         rollVal = 0
@@ -754,7 +752,7 @@ def get_min_max_hover_moments_pitch(model, rollVal, oppositeIsMoment):
     for thrustVal in range(0, precision):
         thrustVal = thrustVal / precision
 
-        if oppositeIsMoment:
+        if oppositeIsMoment: # ONLY WORKS ASSUMING PITCH AND ROLL ARE INDEPENDANT
             rollVal = update_thrusts_from_moment(model, thrustVal, 0, rollMom, True)
             if rollVal == False: continue
             rollVal = rollVal[1]
@@ -765,8 +763,24 @@ def get_min_max_hover_moments_pitch(model, rollVal, oppositeIsMoment):
         for pitchVal in range(-precision, precision):
             pitchVal = pitchVal / precision
             thisWorks = update_thrusts_from_powerVal(model, thrustVal, pitchVal, rollVal)
+            
+            while get_total_motor_moment(model)[1] > rollMom + MICROADJUST: # micro-adjustments due to roll dependancy
+                rollVal -= MICROADJUST
+                thisWorks = update_thrusts_from_powerVal(model, thrustVal, pitchVal, rollVal)
+            while get_total_motor_moment(model)[1] < rollMom - MICROADJUST:
+                rollVal += MICROADJUST
+                thisWorks = update_thrusts_from_powerVal(model, thrustVal, pitchVal, rollVal)
 
             if lastWorked and not thisWorks:
+                update_thrusts_from_powerVal(model, lastThrust, lastPitch, rollVal)
+                
+                while get_total_motor_moment(model)[1] > rollMom + MICROADJUST: # micro-adjustments due to roll dependancy
+                    rollVal -= MICROADJUST
+                    update_thrusts_from_powerVal(model, lastThrust, lastPitch, rollVal)
+                while get_total_motor_moment(model)[1] < rollMom - MICROADJUST:
+                    rollVal += MICROADJUST
+                    update_thrusts_from_powerVal(model, lastThrust, lastPitch, rollVal)
+                
                 thrusts[1].append(get_total_thrust(model))
                 m = get_total_motor_moment(model)
                 pitches[1].append(m[0])
@@ -787,6 +801,7 @@ def get_min_max_hover_moments_pitch(model, rollVal, oppositeIsMoment):
 
 
 def get_min_max_hover_moments_roll(model, pitchVal, oppositeIsMoment):
+    pitchMom = 0
     if oppositeIsMoment:
         pitchMom = pitchVal
         pitchVal = 0
@@ -799,7 +814,7 @@ def get_min_max_hover_moments_roll(model, pitchVal, oppositeIsMoment):
     for thrustVal in range(0, precision):
         thrustVal = thrustVal / precision
 
-        if oppositeIsMoment:
+        if oppositeIsMoment: # ONLY WORKS ASSUMING PITCH AND ROLL ARE INDEPENDANT
             pitchVal = update_thrusts_from_moment(model, thrustVal, 0, pitchMom, True)
             if pitchVal == False: continue
             pitchVal = pitchVal[0]
@@ -810,9 +825,24 @@ def get_min_max_hover_moments_roll(model, pitchVal, oppositeIsMoment):
         for rollVal in range(-precision, precision):
             rollVal = rollVal / precision
             thisWorks = update_thrusts_from_powerVal(model, thrustVal, pitchVal, rollVal)
+            
+            while get_total_motor_moment(model)[0] > pitchMom + 0.0002: # micro-adjustments due to pitch dependancy
+                pitchVal -= 0.0002
+                thisWorks = update_thrusts_from_powerVal(model, thrustVal, pitchVal, rollVal)
+            while get_total_motor_moment(model)[0] < pitchMom:
+                pitchVal += 0.0002
+                thisWorks = update_thrusts_from_powerVal(model, thrustVal, pitchVal, rollVal)
 
             if lastWorked and not thisWorks:
                 update_thrusts_from_powerVal(model, lastThrust, pitchVal, lastRoll)
+                
+                while get_total_motor_moment(model)[0] > pitchMom: # micro-adjustments due to pitch dependancy
+                    pitchVal -= 0.0002
+                    update_thrusts_from_powerVal(model, lastThrust, pitchVal, lastRoll)
+                while get_total_motor_moment(model)[0] < pitchMom:
+                    pitchVal += 0.0002
+                    update_thrusts_from_powerVal(model, lastThrust, pitchVal, lastRoll)
+                
                 thrusts[1].append(get_total_thrust(model))
                 m = get_total_motor_moment(model)
                 pitches[1].append(m[0])
@@ -843,7 +873,7 @@ def hover_moment_subgraph(thrusts, mainAxis, checkAxis, label, doCheck = True):
             mean += val
         mean = mean / len(checkAxis)
         for val in checkAxis:
-            if abs(val - mean) > 0.1 * mean and abs(val - mean) > 0.001:
+            if abs(val - mean) > 0.1 * abs(mean) and abs(val - mean) > 0.005:
                 print(mean, val)
                 label += " (INVALID)"
                 break
