@@ -1,16 +1,14 @@
 sethover:0,0,0 # acceleration, pitch moment, roll moment
 printmotors
-graph:hover_moments,-1,P
-graph:hover_moments,-0.8,P
-graph:hover_moments,-0.6,P
-graph:hover_moments,-0.4,P
-graph:hover_moments,-0.2,P
-graph:hover_moments,0,P
-graph:hover_moments,0.2,P
-graph:hover_moments,0.4,P
-graph:hover_moments,0.6,P
-graph:hover_moments,0.8,P
-graph:hover_moments,1,P
-graph:hover_moments,0,M
+
+graph:hover_moments,-0.4,C
+graph:hover_moments,-0.2,C
+graph:hover_moments,0,C
+graph:hover_moments,0.2,C
+graph:hover_moments,0.4,C
+
 graph:hover_moments,-2,M
+graph:hover_moments,-1,M
+graph:hover_moments,0,M
+graph:hover_moments,1,M
 graph:hover_moments,2,M
