@@ -739,7 +739,7 @@ def print_motor_thrusts(model):
 MICROADJUST = 0.0002
 
 def get_min_max_hover_moments_pitch(model, rollVal, oppositeIsMoment):
-    rollMom = 0
+    rollMom = None
     if oppositeIsMoment:
         rollMom = rollVal
         rollVal = 0
@@ -763,23 +763,25 @@ def get_min_max_hover_moments_pitch(model, rollVal, oppositeIsMoment):
         for pitchVal in range(-precision, precision):
             pitchVal = pitchVal / precision
             thisWorks = update_thrusts_from_powerVal(model, thrustVal, pitchVal, rollVal)
-            
-            while get_total_motor_moment(model)[1] > rollMom + MICROADJUST: # micro-adjustments due to roll dependancy
-                rollVal -= MICROADJUST
-                thisWorks = update_thrusts_from_powerVal(model, thrustVal, pitchVal, rollVal)
-            while get_total_motor_moment(model)[1] < rollMom - MICROADJUST:
-                rollVal += MICROADJUST
-                thisWorks = update_thrusts_from_powerVal(model, thrustVal, pitchVal, rollVal)
+
+            if oppositeIsMoment:
+                while get_total_motor_moment(model)[1] > rollMom + MICROADJUST: # micro-adjustments due to roll dependancy
+                    rollVal -= MICROADJUST
+                    thisWorks = update_thrusts_from_powerVal(model, thrustVal, pitchVal, rollVal)
+                while get_total_motor_moment(model)[1] < rollMom - MICROADJUST:
+                    rollVal += MICROADJUST
+                    thisWorks = update_thrusts_from_powerVal(model, thrustVal, pitchVal, rollVal)
 
             if lastWorked and not thisWorks:
                 update_thrusts_from_powerVal(model, lastThrust, lastPitch, rollVal)
-                
-                while get_total_motor_moment(model)[1] > rollMom + MICROADJUST: # micro-adjustments due to roll dependancy
-                    rollVal -= MICROADJUST
-                    update_thrusts_from_powerVal(model, lastThrust, lastPitch, rollVal)
-                while get_total_motor_moment(model)[1] < rollMom - MICROADJUST:
-                    rollVal += MICROADJUST
-                    update_thrusts_from_powerVal(model, lastThrust, lastPitch, rollVal)
+
+                if oppositeIsMoment:
+                    while get_total_motor_moment(model)[1] > rollMom + MICROADJUST: # micro-adjustments due to roll dependancy
+                        rollVal -= MICROADJUST
+                        update_thrusts_from_powerVal(model, lastThrust, lastPitch, rollVal)
+                    while get_total_motor_moment(model)[1] < rollMom - MICROADJUST:
+                        rollVal += MICROADJUST
+                        update_thrusts_from_powerVal(model, lastThrust, lastPitch, rollVal)
                 
                 thrusts[1].append(get_total_thrust(model))
                 m = get_total_motor_moment(model)
@@ -801,7 +803,7 @@ def get_min_max_hover_moments_pitch(model, rollVal, oppositeIsMoment):
 
 
 def get_min_max_hover_moments_roll(model, pitchVal, oppositeIsMoment):
-    pitchMom = 0
+    pitchMom = None
     if oppositeIsMoment:
         pitchMom = pitchVal
         pitchVal = 0
@@ -825,23 +827,25 @@ def get_min_max_hover_moments_roll(model, pitchVal, oppositeIsMoment):
         for rollVal in range(-precision, precision):
             rollVal = rollVal / precision
             thisWorks = update_thrusts_from_powerVal(model, thrustVal, pitchVal, rollVal)
-            
-            while get_total_motor_moment(model)[0] > pitchMom + 0.0002: # micro-adjustments due to pitch dependancy
-                pitchVal -= 0.0002
-                thisWorks = update_thrusts_from_powerVal(model, thrustVal, pitchVal, rollVal)
-            while get_total_motor_moment(model)[0] < pitchMom:
-                pitchVal += 0.0002
-                thisWorks = update_thrusts_from_powerVal(model, thrustVal, pitchVal, rollVal)
+
+            if oppositeIsMoment:
+                while get_total_motor_moment(model)[0] > pitchMom + 0.0002: # micro-adjustments due to pitch dependancy
+                    pitchVal -= 0.0002
+                    thisWorks = update_thrusts_from_powerVal(model, thrustVal, pitchVal, rollVal)
+                while get_total_motor_moment(model)[0] < pitchMom:
+                    pitchVal += 0.0002
+                    thisWorks = update_thrusts_from_powerVal(model, thrustVal, pitchVal, rollVal)
 
             if lastWorked and not thisWorks:
                 update_thrusts_from_powerVal(model, lastThrust, pitchVal, lastRoll)
-                
-                while get_total_motor_moment(model)[0] > pitchMom: # micro-adjustments due to pitch dependancy
-                    pitchVal -= 0.0002
-                    update_thrusts_from_powerVal(model, lastThrust, pitchVal, lastRoll)
-                while get_total_motor_moment(model)[0] < pitchMom:
-                    pitchVal += 0.0002
-                    update_thrusts_from_powerVal(model, lastThrust, pitchVal, lastRoll)
+
+                if oppositeIsMoment:
+                    while get_total_motor_moment(model)[0] > pitchMom: # micro-adjustments due to pitch dependancy
+                        pitchVal -= 0.0002
+                        update_thrusts_from_powerVal(model, lastThrust, pitchVal, lastRoll)
+                    while get_total_motor_moment(model)[0] < pitchMom:
+                        pitchVal += 0.0002
+                        update_thrusts_from_powerVal(model, lastThrust, pitchVal, lastRoll)
                 
                 thrusts[1].append(get_total_thrust(model))
                 m = get_total_motor_moment(model)
