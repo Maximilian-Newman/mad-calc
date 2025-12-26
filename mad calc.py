@@ -11,6 +11,7 @@ CL_SAFETY_FACTOR = 1.5
 
 SCALE = 1
 modelName = ""
+labelOverride = ""
 contraintsModified = False
 
 turtle.hideturtle()
@@ -216,6 +217,15 @@ class Part:
 
 
 
+def modify(model, detail):
+    if detail[1] == "pitchControl":
+        model[detail[0]].pitchControl = float(detail[2])
+    elif detail[1] == "rollControl":
+        model[detail[0]].rollControl = float(detail[2])
+    elif detail[1] == "mass":
+        model[detail[0]].mass = float(detail[2])
+
+
 def remove_comments(content):
     content = content.replace("\r", "")
     content = content.split("\n")
@@ -347,11 +357,8 @@ def load_file(path):
             SCALE = float(line[1])
         elif line[0] == "modify":
             detail = line[1].split(",")
-            if detail[1] == "pitchControl":
-                parts[detail[0]].pitchControl = float(detail[2])
-            elif detail[1] == "rollControl":
-                parts[detail[0]].rollControl = float(detail[2])
-            #add more here if needed later
+            modify(parts, detail)
+            
 
     apply_constraints(parts)
     return parts
@@ -459,13 +466,17 @@ def get_model_drag(model, v, tailIncidence):
     AoA = get_AoA(model, v, tailIncidence)
     return get_model_drag_manual_AoA(model, AoA, v, tailIncidence)
 
+def show_graph():
+    plt.legend(markerscale = 8)
+    plt.show(block = False)
+
 def graph_model_x_moment(model, vMax, tailIncidence, doAxes = True):
     if doAxes:
         plt.figure()
-        plt.title(modelName)
-        plt.axhline(0, color="black")
-        plt.xlabel("Velocity - $ms^{-1}$")
-        plt.ylabel("Pitching Moment - $Nm$")
+    plt.title(modelName)
+    plt.axhline(0, color="black")
+    plt.xlabel("Velocity - $ms^{-1}$")
+    plt.ylabel("Pitching Moment - $Nm$")
 
     if type(tailIncidence) == list:
         for i in tailIncidence:
@@ -484,17 +495,20 @@ def graph_model_x_moment(model, vMax, tailIncidence, doAxes = True):
         if M != None:
             x.append(v)
             y.append(M)
-    plt.scatter(x, y, marker=".", s=1, label = "tail incidence = " + str(tailIncidence))
-    if doAxes:
-        plt.legend(markerscale = 8)
-        plt.show(block = False)
+
+    label = "tail incidence = " + str(tailIncidence)
+    if labelOverride != "":
+        label = labelOverride
+    
+    plt.scatter(x, y, marker=".", s=1, label = label)
+    if doAxes: show_graph()
 
 def graph_model_drag(model, vMax, tailIncidence, doAxes = True):
     if doAxes:
         plt.figure()
-        plt.title(modelName)
-        plt.xlabel("Velocity - $ms^{-1}$")
-        plt.ylabel("Idealized Wing Drag - $N$")
+    plt.title(modelName)
+    plt.xlabel("Velocity - $ms^{-1}$")
+    plt.ylabel("Idealized Wing Drag - $N$")
 
     if type(tailIncidence) == list:
         for i in tailIncidence:
@@ -514,17 +528,19 @@ def graph_model_drag(model, vMax, tailIncidence, doAxes = True):
             x.append(v)
             y.append(D)
 
-    plt.scatter(x, y, marker=".", s=1, label = "tail incidence = " + str(tailIncidence))
-    if doAxes:
-        plt.legend(markerscale = 8)
-        plt.show(block = False)
+    label = "tail incidence = " + str(tailIncidence)
+    if labelOverride != "":
+        label = labelOverride
+    
+    plt.scatter(x, y, marker=".", s=1, label = label)
+    if doAxes: show_graph()
 
 def graph_AoA(model, vMax, tailIncidence, doAxes = True):
     if doAxes:
         plt.figure()
-        plt.title(modelName)
-        plt.xlabel("Velocity - $ms^{-1}$")
-        plt.ylabel("Angle of Attack - (°)")
+    plt.title(modelName)
+    plt.xlabel("Velocity - $ms^{-1}$")
+    plt.ylabel("Angle of Attack - (°)")
 
     if type(tailIncidence) == list:
         for i in tailIncidence:
@@ -544,10 +560,12 @@ def graph_AoA(model, vMax, tailIncidence, doAxes = True):
             x.append(v)
             y.append(AoA)
 
-    plt.scatter(x, y, marker=".", s=1, label = "tail incidence = " + str(tailIncidence))
-    if doAxes:
-        plt.legend(markerscale = 8)
-        plt.show(block = False)
+    label = "tail incidence = " + str(tailIncidence)
+    if labelOverride != "":
+        label = labelOverride
+    
+    plt.scatter(x, y, marker=".", s=1, label = label)
+    if doAxes: show_graph()
 
 
 def get_motor_list(model):
@@ -964,6 +982,10 @@ def load_new_model():
 
 
 def follow_preset_options(model, options):
+    global modelName
+    global labelOverride
+    labelOverride = ""
+    
     options = remove_comments(options).split("\n")
     vMax = 30
     tailIncidence = 0
@@ -979,13 +1001,16 @@ def follow_preset_options(model, options):
             update_thrusts_from_moment(model, (get_mass(model)/1000) * (9.81+acceleration), pitch, roll)
         elif line[0] == "printmotors":
             print_motor_thrusts(model)
-        elif line[0] == "graph":
+        elif line[0] == "graph" or line[0] == "graphcombined":
+            doAxes = True
+            if line[0] == "graphcombined":
+                doAxes = False
             if line[1] == "x_moment":
-                graph_model_x_moment(model, vMax, tailIncidence)
+                graph_model_x_moment(model, vMax, tailIncidence, doAxes)
             elif line[1] == "drag":
-                graph_model_drag(model, vMax, tailIncidence)
+                graph_model_drag(model, vMax, tailIncidence, doAxes)
             elif line[1] == "AoA":
-                graph_AoA(model, vMax, tailIncidence)
+                graph_AoA(model, vMax, tailIncidence, doAxes)
             elif line[1] == "hover_moments3d":
                 graph_hover_moments_3D(model)
             elif line[1].find("hover_moments") == 0:
@@ -996,6 +1021,17 @@ def follow_preset_options(model, options):
                 graph_hover_moments(model, float(options[1]), isM)
             else:
                 print("ERROR, unknown graph:", line[1])
+        elif line[0] == "modify":
+            detail = line[1].split(",")
+            modify(model, detail)
+        elif line[0] == "modelname":
+            modelName = line[1]
+        elif line[0] == "label":
+            labelOverride = line[1]
+        elif line[0] == "showgraph":
+            show_graph()
+        elif line[0] == "newgraph":
+            plt.figure()
         else:
             print("ERROR, unknown instruction:")
             print(line)
