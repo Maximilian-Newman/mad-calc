@@ -18,6 +18,75 @@ turtle.hideturtle()
 turtle.speed(0)
 turtle.tracer(False)
 
+def evaluate(string):
+    if " " in string:
+        string = string.replace(" ", "")
+
+    if "**" in string:
+        string = string.replace("**", "^")
+
+    if string == "":
+        return 0
+    
+    try: return float(string)
+    except: pass
+
+    if "(" in string:
+        start = string[0:string.find("(")]
+        sub = ""
+        depth = 1
+        string = string[string.find("(")+1 :]
+        while depth != 0 and string != "":
+            if string[0] == "(":
+                depth += 1
+            elif string[0] == ")":
+                depth -= 1
+
+            if depth != 0:
+                sub += string[0]
+            string = string[1:]
+
+        return evaluate(start + str(evaluate(sub)) + string)
+
+    elif "+" in string or "-" in string:
+        loc = -1
+        addsub = 1 # 1 for addition, -1 for subtraction
+        if "+" in string:
+            loc = string.rfind("+")
+        if "-" in string:
+            if string.rfind("-") > loc:
+                addsub = -1
+                loc = string.rfind("-")
+
+        return evaluate(string[0:loc]) + addsub * evaluate(string[loc+1:])
+
+    elif "*" in string or "/" in string or "%" in string:
+        loc = -1
+        operator = ""
+        if "*" in string:
+            loc = string.rfind("*")
+            operator = "*"
+        if "/" in string:
+            if string.rfind("/") > loc:
+                operator = "/"
+                loc = string.rfind("/")
+        if "%" in string:
+            if string.rfind("%") > loc:
+                operator = "%"
+                loc = string.rfind("%")
+
+        if operator == "/":
+            return evaluate(string[0:loc]) / evaluate(string[loc+1:])
+        elif operator == "*":
+            return evaluate(string[0:loc]) * evaluate(string[loc+1:])
+        return evaluate(string[0:loc]) % evaluate(string[loc+1:])
+
+    elif "^" in string:
+        loc = string.find("^")
+        return evaluate(string[0:loc]) ** evaluate(string[loc+1:])
+
+    return 0
+
 def goto(x,y):
     turtle.goto(SCALE*x, SCALE*y)
 
@@ -285,15 +354,15 @@ def load_file(path):
                 elif line[0] == "color":
                     part.color = line[1]
                 elif line[0] == "dx":
-                    dx = float(line[1])
+                    dx = evaluate(line[1])
                 elif line[0] == "dy":
-                    dy = float(line[1])
+                    dy = evaluate(line[1])
                 elif line[0] == "lengthdensity":
-                    lengthdensity = float(line[1])
+                    lengthdensity = evaluate(line[1])
                 elif line[0] == "mate":
                     mate = line[1].split(",")
-                    mate[1] = float(mate[1])
-                    mate[2] = float(mate[2])
+                    mate[1] = evaluate(mate[1])
+                    mate[2] = evaluate(mate[2])
                     part.mates[mate[0]] = mate[1:]
                 else:
                     print("Unknown part line in file:")
@@ -316,29 +385,29 @@ def load_file(path):
                 elif line[0] == "drawrect":
                     r = line[1].split(",")
                     for i in range(0, len(r)):
-                        r[i] = float(r[i])
+                        r[i] = evaluate(r[i])
                     part.rects.append(r)
                 elif line[0] == "drawcirc":
                     r = line[1].split(",")
                     for i in range(0, len(r)):
-                        r[i] = float(r[i])
+                        r[i] = evaluate(r[i])
                     part.circs.append(r)
                 elif line[0] == "mass":
-                    part.mass = float(line[1])
+                    part.mass = evaluate(line[1])
                 elif line[0] == "cg":
                     cg = line[1].split(",")
-                    cg[0] = float(cg[0])
-                    cg[1] = float(cg[1])
+                    cg[0] = evaluate(cg[0])
+                    cg[1] = evaluate(cg[1])
                     part.cg = cg
                 elif line[0] == "mate":
                     mate = line[1].split(",")
-                    mate[1] = float(mate[1])
-                    mate[2] = float(mate[2])
+                    mate[1] = evaluate(mate[1])
+                    mate[2] = evaluate(mate[2])
                     part.mates[mate[0]] = mate[1:]
                 elif line[0] == "rod":
                     r = line[1].split(",")
                     for i in range(0, len(r)):
-                        r[i] = float(r[i])
+                        r[i] = evaluate(r[i])
                     part.rods.append(r)
                 elif line[0] == "airfoil":
                     part.airfoils.append(Airfoil(line[1]))
@@ -346,8 +415,8 @@ def load_file(path):
                     part.maxThrust = float(line[1])
                 elif line[0] == "thrustcenter":
                     ct = line[1].split(",")
-                    ct[0] = float(ct[0])
-                    ct[1] = float(ct[1])
+                    ct[0] = evaluate(ct[0])
+                    ct[1] = evaluate(ct[1])
                     part.thrustCenter = ct
                 else:
                     print("Unknown part line in file:")
@@ -371,7 +440,7 @@ def load_file(path):
             parts[detail[0][0]].attachment = [detail[0][1], parts[detail[1][0]], detail[1][1]]
         elif line[0] == "scale":
             global SCALE
-            SCALE = float(line[1])
+            SCALE = evaluate(line[1])
         elif line[0] == "modify":
             detail = line[1].split(",")
             modify(parts, detail)
@@ -613,6 +682,8 @@ def get_total_motor_moment(model):
         if motor.thrust > motor.maxThrust:
             motor.thrust = motor.maxThrust
         dx, dy = motor.abs_thrustCenter()
+        dx -= cgx
+        dy -= cgy
         M[0] += motor.thrust * -dx / 1000
         M[1] += motor.thrust * -dy / 1000
     return M
@@ -786,7 +857,7 @@ def get_min_max_hover_moments_pitch(model, rollVal, oppositeIsMoment):
     pitches = [[], []]
     rolls = [[], []]
 
-    for thrustVal in range(0, thrustStep):
+    for thrustVal in range(0, thrustStep+1):
         thrustVal = thrustVal / thrustStep
 
         if oppositeIsMoment: # ONLY WORKS ASSUMING PITCH AND ROLL ARE INDEPENDANT
@@ -797,7 +868,7 @@ def get_min_max_hover_moments_pitch(model, rollVal, oppositeIsMoment):
         lastWorked = False
         lastThrust = 0
         lastPitch = 0
-        for pitchVal in range(-step, step):
+        for pitchVal in range(-step, step+1):
             pitchVal = pitchVal / step
             thisWorks = update_thrusts_from_powerVal(model, thrustVal, pitchVal, rollVal)
 
@@ -806,7 +877,7 @@ def get_min_max_hover_moments_pitch(model, rollVal, oppositeIsMoment):
                     rollVal -= MICROADJUST * (get_total_motor_moment(model)[1] - rollMom)
                     thisWorks = update_thrusts_from_powerVal(model, thrustVal, pitchVal, rollVal)
 
-            if lastWorked and not thisWorks:
+            if lastWorked and not thisWorks or thisWorks and pitchVal == 1:
                 update_thrusts_from_powerVal(model, lastThrust, lastPitch, rollVal)
 
                 if oppositeIsMoment: # micro-adjustments due to roll dependancy
@@ -842,7 +913,7 @@ def get_min_max_hover_moments_roll(model, pitchVal, oppositeIsMoment):
     pitches = [[], []]
     rolls = [[], []]
 
-    for thrustVal in range(0, precision):
+    for thrustVal in range(0, precision+1):
         thrustVal = thrustVal / precision
 
         if oppositeIsMoment: # ONLY WORKS ASSUMING PITCH AND ROLL ARE INDEPENDANT
@@ -853,7 +924,7 @@ def get_min_max_hover_moments_roll(model, pitchVal, oppositeIsMoment):
         lastWorked = False
         lastThrust = 0
         lastRoll = 0
-        for rollVal in range(-precision, precision):
+        for rollVal in range(-precision, precision+1):
             rollVal = rollVal / precision
             thisWorks = update_thrusts_from_powerVal(model, thrustVal, pitchVal, rollVal)
 
@@ -862,7 +933,7 @@ def get_min_max_hover_moments_roll(model, pitchVal, oppositeIsMoment):
                     pitchVal -= MICROADJUST * (get_total_motor_moment(model)[0] - pitchMom)
                     thisWorks = update_thrusts_from_powerVal(model, thrustVal, pitchVal, rollVal)
 
-            if lastWorked and not thisWorks:
+            if lastWorked and not thisWorks or thisWorks and rollVal == 1:
                 update_thrusts_from_powerVal(model, lastThrust, pitchVal, lastRoll)
 
                 if oppositeIsMoment: # micro-adjustments due to pitch dependancy
@@ -979,7 +1050,7 @@ def load_new_model():
     turtle.clear()
     model = load_file(path)
     draw(model)
-    print("total mass:", get_mass(model))
+    print("total mass:", get_mass(model), "g")
     return model
 
 
@@ -995,11 +1066,11 @@ def follow_preset_options(model, options):
         if line == "": continue
         line = line.split(":")
         if line[0] == "vmax":
-            vMax = float(line[1])
+            vMax = evaluate(line[1])
         elif line[0] == "tailincidence":
-            tailIncidence = [float(i) for i in line[1].split(",")]
+            tailIncidence = [evaluate(i) for i in line[1].split(",")]
         elif line[0] == "sethover":
-            acceleration, pitch, roll = [float(i) for i in line[1].split(",")]
+            acceleration, pitch, roll = [evaluate(i) for i in line[1].split(",")]
             update_thrusts_from_moment(model, (get_mass(model)/1000) * (9.81+acceleration), pitch, roll)
         elif line[0] == "printmotors":
             print_motor_thrusts(model)
@@ -1020,7 +1091,7 @@ def follow_preset_options(model, options):
                 isM = False
                 if options[2] == "M":
                     isM = True
-                graph_hover_moments(model, float(options[1]), isM)
+                graph_hover_moments(model, evaluate(options[1]), isM)
             else:
                 print("ERROR, unknown graph:", line[1])
         elif line[0] == "modify":
@@ -1042,7 +1113,7 @@ def options_from_file(model, path = None):
     if path == None:
         path = filedialog.askopenfilename(initialdir = __file__, filetypes=(("mad calc presets file", "*.madp"),))
         if path == () or path == "":
-            return load_new_model()
+            return
 
     file = open(path, "r")
     options = file.read()
