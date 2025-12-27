@@ -37,6 +37,14 @@ def draw_rect(x1, y1, x2, y2):
     goto(x1, y2)
     goto(x1, y1)
 
+def draw_circ(x, y, r):
+    turtle.penup()
+    goto(x, y-r)
+    turtle.pendown()
+    r = int(r*SCALE)
+    turtle.circle(r)
+    turtle.penup()
+
 
 def vector_add(v1, v2):
     return [v1[0] + v2[0], v1[1] + v2[1]]
@@ -124,7 +132,8 @@ class Part:
         self.color = "black"
         self.name = ""
         self.rects = [] # recatangles to draw
-        self.rods = [] # rods to draw
+        self.rods = []  # rods to draw
+        self.circs = [] # circles to draw
         self.mass = 0
         self.offset = [0, 0]
         self.mates = dict()
@@ -192,10 +201,13 @@ class Part:
         for rect in self.rects:
             draw_rect(rect[0] + self.offset[0], rect[1] + self.offset[1], rect[2] + self.offset[0], rect[3] + self.offset[1])
 
+        for circ in self.circs:
+            draw_circ(circ[0] + self.offset[0], circ[1] + self.offset[1], circ[2])
+
         for rod in self.rods:
             turtle.penup()
             goto(rod[0] + self.offset[0], rod[1] + self.offset[1])
-            turtle.pensize(5)
+            turtle.pensize(rod[4])
             turtle.pendown()
             goto(rod[2] + self.offset[0], rod[3] + self.offset[1])
             turtle.penup()
@@ -286,7 +298,7 @@ def load_file(path):
                 else:
                     print("Unknown part line in file:")
                     print(line)
-            part.rods.append([0, 0, dx, dy])
+            part.rods.append([0, 0, dx, dy, 20*lengthdensity])
             part.cg = [dx/2, dy/2]
             part.mates["farend"] = [dx, dy]
             part.mates["center"] = [dx/2, dy/2]
@@ -306,6 +318,11 @@ def load_file(path):
                     for i in range(0, len(r)):
                         r[i] = float(r[i])
                     part.rects.append(r)
+                elif line[0] == "drawcirc":
+                    r = line[1].split(",")
+                    for i in range(0, len(r)):
+                        r[i] = float(r[i])
+                    part.circs.append(r)
                 elif line[0] == "mass":
                     part.mass = float(line[1])
                 elif line[0] == "cg":
@@ -444,7 +461,7 @@ def get_AoA(model, v, tailIncidence):
             return None
     
     while get_model_lift(model, minAoA, v, tailIncidence) > reqLift:
-        maxAoA -= 1
+        minAoA -= 1
         if minAoA < -90:
             #print("STALLED")
             return None
