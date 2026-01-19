@@ -6,13 +6,14 @@ from matplotlib import pyplot as plt
 import numpy as np
 
 
-CL_SAFETY_FACTOR = 1.5
+CL_SAFETY_FACTOR = 1.43
 
 
 SCALE = 1
 modelName = ""
 labelOverride = ""
 contraintsModified = False
+printnums = 0
 
 turtle.hideturtle()
 turtle.speed(0)
@@ -123,14 +124,14 @@ def vector_sub(v1, v2):
 class Airfoil:
     def __init__(self, string):
         string = string.split(",")
-        self.chord = float(string[0])
-        self.span = float(string[1])
-        self.x1 = float(string[3])
-        self.y1 = float(string[4])
+        self.chord = evaluate(string[0])
+        self.span = evaluate(string[1])
+        self.x1 = evaluate(string[3])
+        self.y1 = evaluate(string[4])
         self.x2 = self.x1 + self.chord
         self.y2 = self.y1 + self.span
         self.area = self.chord * self.span / 1000000 # m^2
-        self.center = [self.x1 + float(string[2]) * self.chord, self.y1 + self.span / 2]
+        self.center = [self.x1 + evaluate(string[2]) * self.chord, self.y1 + self.span / 2]
         self.coefData = []
         self.isStabilizer = False
         if string[5] == "stabilizer":
@@ -186,11 +187,14 @@ class Airfoil:
         if self.isStabilizer:
             AoA = ifStabOffset - AoA
         
-        dx = (cgx - self.x1 - offsetx) / 1000
+        dx = (cgx - self.center[0] - offsetx) / 1000
         C_L, C_D, C_M = self.get_coefData(AoA)
         if C_L == None: return None
         L = 0.5 * 1.225 * v**2 * self.area * C_L
         M = dx * L + 0.5 * 1.225 * v**2 * self.area * self.chord/1000 * C_M
+
+        if v == 20.8 and ifStabOffset == 4:
+            print(dx, C_L, L*dx, M - L*dx, M)
         
         if self.isStabilizer:
             return -M
@@ -276,7 +280,9 @@ class Part:
         for rod in self.rods:
             turtle.penup()
             goto(rod[0] + self.offset[0], rod[1] + self.offset[1])
-            turtle.pensize(rod[4])
+            turtle.pensize(2*rod[4])
+            if rod[4] == 0:
+                turtle.pensize(5)
             turtle.pendown()
             goto(rod[2] + self.offset[0], rod[3] + self.offset[1])
             turtle.penup()
@@ -300,11 +306,18 @@ class Part:
 
 def modify(model, detail):
     if detail[1] == "pitchControl":
-        model[detail[0]].pitchControl = float(detail[2])
+        model[detail[0]].pitchControl = evaluate(detail[2])
     elif detail[1] == "rollControl":
-        model[detail[0]].rollControl = float(detail[2])
+        model[detail[0]].rollControl = evaluate(detail[2])
     elif detail[1] == "mass":
-        model[detail[0]].mass = float(detail[2])
+        model[detail[0]].mass = evaluate(detail[2])
+    elif detail[1] == "cg":
+        model[detail[0]].cg = [evaluate(detail[2]), evaluate(detail[3])]
+    elif detail[1] == "clearAirfoil":
+        model[detail[0]].airfoils = []
+    elif detail[1] == "airfoil":
+        #print(",".join(detail[2:]))
+        model[detail[0]].airfoils.append(Airfoil(",".join(detail[2:])))
 
 
 def remove_comments(content):
@@ -412,7 +425,7 @@ def load_file(path):
                 elif line[0] == "airfoil":
                     part.airfoils.append(Airfoil(line[1]))
                 elif line[0] == "maxthrust":
-                    part.maxThrust = float(line[1])
+                    part.maxThrust = evaluate(line[1])
                 elif line[0] == "thrustcenter":
                     ct = line[1].split(",")
                     ct[0] = evaluate(ct[0])
@@ -1033,9 +1046,19 @@ def graph_hover_moments_3D(model):
     ax.scatter(x, y, z, marker = ".", alpha=1, c=colors)
     plt.show(block = False)
 
-    
+
+
+def list_masses(model):
+    for part in model.values():
+        print(part.name, ":", part.mass, "g")
+    print()
+    print("total: ", get_mass(model), "g")
+
 
 def load_new_model():
+    global printnums
+    printnums = 0
+    
     path = filedialog.askopenfilename(initialdir = __file__, filetypes=(("mad calc model", "*.madm"),))
     if path == () or path == "":
         return load_new_model()
@@ -1050,7 +1073,8 @@ def load_new_model():
     turtle.clear()
     model = load_file(path)
     draw(model)
-    print("total mass:", get_mass(model), "g")
+    #print("total mass:", get_mass(model), "g")
+    list_masses(model)
     return model
 
 
@@ -1059,7 +1083,19 @@ def follow_preset_options(model, options):
     global labelOverride
     labelOverride = ""
     
-    options = remove_comments(options).split("\n")
+    options = remove_comments(options)
+
+    
+
+    if "END VARIABLES\n" in options:
+        variables, options = options.split("END VARIABLES\n")
+        variables = variables.split("\n")
+        for var in variables:
+            if var == "": continue
+            var = var.split("=")
+            options = options.replace(var[0], var[1])
+
+    options = options.split("\n")
     vMax = 30
     tailIncidence = 0
     for line in options:
