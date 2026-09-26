@@ -7,6 +7,7 @@ import numpy as np
 
 
 CL_SAFETY_FACTOR = 1.43
+CM_SAFETY_FACTOR = 1.43
 
 
 SCALE = 1
@@ -144,7 +145,7 @@ class Airfoil:
             if line == "": continue
             line = line.split(",")
             # [AoA, C_L, C_D, C_M]
-            self.coefData.append([float(line[0]), float(line[1]) / CL_SAFETY_FACTOR, float(line[2]), float(line[4])])
+            self.coefData.append([float(line[0]), float(line[1]) / CL_SAFETY_FACTOR, float(line[2]), float(line[4]) / CM_SAFETY_FACTOR])
 
     def get_coefData(self, AoA): #by linear interpolation
         if AoA == None:
@@ -192,9 +193,6 @@ class Airfoil:
         if C_L == None: return None
         L = 0.5 * 1.225 * v**2 * self.area * C_L
         M = dx * L + 0.5 * 1.225 * v**2 * self.area * self.chord/1000 * C_M
-
-        if v == 20.8 and ifStabOffset == 4:
-            print(dx, C_L, L*dx, M - L*dx, M)
         
         if self.isStabilizer:
             return -M
