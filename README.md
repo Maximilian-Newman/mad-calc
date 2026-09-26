@@ -1,11 +1,11 @@
 
 
-## MADM Files {#madm-files}
+## MADM Files
 
 To use the calculator, you need to create / edit a mad model of the drone (.madm file). This file is split in 2 sections. As a loose analogy to CAD the first is basically like an assembly, and the second section is the parts. You can add comments by using a “\#” like in python.
 
 Here is the .madm file for the subscale as an example, a more detailed explanation of what different lines do is underneath.
-
+```
 rodlineardensity=0.3  
 END VARIABLES
 
@@ -120,13 +120,13 @@ cg:30,0
 drawrect:0,-25,60,25  
 mate:spar,60,0  
 mate:motor,10,0
-
+```
 Variables allow you to easily modify a property that is common to multiple parts (like in this case the rod linear density, since it was the same for all the carbon fiber spars). Variables must all be defined before the “END VARIABLES” mark. Then just use the variable name anywhere you would have put the number. These are implemented by basically doing “find and replace”, so don’t use variable names with that could appear as part of the file syntax (like “mass”) or make any variable name that is included inside another variable name (like “mass1” and “mass11”).
 
 Parts are defined by a “NEW PART” line. Anything after that line until the next “NEW PART” is interpreted as being properties of that part. These properties are defined by a line which contains the type of property (“name”, “mass”, “cg” …) followed by “:” followed by any parameters split by “,”. Pay attention to the units used, otherwise the results will be completely wrong.  
 Coordinate systems for parts are independent and only relative to a reference point in that part. You can use anything as the reference, as long as everything in that part (mates, cg …) are consistent. The X component should indicate forward/backward, with backwards being the positive direction. The Y component should be right/left, with right being the positive direction.
 
-### Generic Part Properties {#generic-part-properties}
+### Generic Part Properties
 
 **name** \- defines the name for the part so that it can be referenced in the assembly. Names for all parts must be unique
 
@@ -162,7 +162,7 @@ Coordinate systems for parts are independent and only relative to a reference po
 
 All parts automatically have a mate called “origin” defined at (0,0)
 
-### Rods (Special Case for Parts) {#rods-(special-case-for-parts)}
+### Rods (Special Case for Parts)
 
 To simulate a carbon fiber rod / tube it is simpler to use the rod mode. This is done by writing “specialtype:rod” on the FIRST LINE after “NEW PART”. After doing this, the part follows rules for rods, so most of the properties described above for generic parts will not work. Instead the following properties can be used:
 
@@ -174,7 +174,7 @@ Lengthdensity \- linear density of the rod in g/mm
 
 Note for rods: the coordinate system is pre-defined to have one end being the origin. Cg is automatically set to be at the center of the rod. Mates called “farend” and “center” are automatically added to the end of the rod that is not at the origin and middle of the rod.
 
-### Assemblies {#assemblies}
+### Assemblies
 
 The assembly is found before the first instance of “NEW PART” in the .madm file. The following functions can be used inside of the assembly section to build the model of the whole drone.
 
@@ -188,7 +188,7 @@ The assembly is found before the first instance of “NEW PART” in the .madm f
 
 **rollControl** \- same as pitchControl property, but for roll. \+1 means increase thrust to roll right, \-1 means increase thrust to roll left.
 
-## MADP Files {#madp-files}
+## MADP Files
 
 These files define what analysis you want to perform on the drone model. I already created 2 that you can use for generic hover and horizontal flight stability. But you can modify these files or create a new one to calculate something different.
 
@@ -223,7 +223,7 @@ Every line in the file is executed sequentially (I got a bit carried away and ba
 
 **newgraph**, **graphcombined**, and **showgraph** \- “graphcombined” can be used instead of “graph” to combine multiple graphs onto one (useful when using modify to change some aspect of the design and want to compare something. A combined graph must be preceded by newgraph, and end with showgraph (see “horizontal stability varying battery mass.madp” for an example)
 
-## Usage {#usage}
+## Usage
 
 ![][image5]  
 Run the python script (MAD Calc.py). A popup will ask you to select a .madm file, pick the one with the model for the drone you want to analyze. The total weight in grams should be printed, and a diagram of the drone should appear, double check it to make sure everything loaded properly and that the .madm file didn’t have any mistakes.
