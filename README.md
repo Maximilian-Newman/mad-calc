@@ -1,4 +1,4 @@
-
+**Note:** Support for mad-calc has ended. It is being replaced by mad-calc-2, which is a completely rewritten and improved calculator and can be found in a different repository: https://github.com/Maximilian-Newman/mad-calc-2
 
 ## MADM Files
 
