@@ -7,7 +7,8 @@ import numpy as np
 
 
 CL_SAFETY_FACTOR = 1.43
-CM_SAFETY_FACTOR = 1.43
+CM_SAFETY_FACTOR = 1
+CD_MULTIPLIER = 1.5
 
 
 SCALE = 1
@@ -145,7 +146,7 @@ class Airfoil:
             if line == "": continue
             line = line.split(",")
             # [AoA, C_L, C_D, C_M]
-            self.coefData.append([float(line[0]), float(line[1]) / CL_SAFETY_FACTOR, float(line[2]), float(line[4]) / CM_SAFETY_FACTOR])
+            self.coefData.append([float(line[0]), float(line[1]) / CL_SAFETY_FACTOR, float(line[2]) * CD_MULTIPLIER, float(line[4]) / CM_SAFETY_FACTOR])
 
     def get_coefData(self, AoA): #by linear interpolation
         if AoA == None:
@@ -1051,6 +1052,9 @@ def list_masses(model):
         print(part.name, ":", part.mass, "g")
     print()
     print("total: ", get_mass(model), "g")
+
+    print()
+    print("cg: ", get_cg(model))
 
 
 def load_new_model():
